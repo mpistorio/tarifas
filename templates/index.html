@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Calculadora de Consumo de Gas</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="container">
+        <h1>Calculadora de Consumo de Gas</h1>
+        <form id="consumo-form">
+            <label for="anio">Año:</label>
+            <select id="anio" name="anio" required>
+                <option value="">Seleccione un año</option>
+                {% for anio in anios %}
+                <option value="{{ anio }}">{{ anio }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="provincia">Provincia:</label>
+            <select id="provincia" name="provincia" required>
+                <option value="">Seleccione una provincia</option>
+                {% for provincia in provincias %}
+                <option value="{{ provincia }}">{{ provincia }}</option>
+                {% endfor %}
+            </select>
+
+            <label for="ciudad">Ciudad:</label>
+            <select id="ciudad" name="ciudad" required>
+                <option value="">Seleccione una ciudad</option>
+            </select>
+
+            <div id="ingresos-div" style="display: none;">
+                <label for="ingresos">Nivel de ingresos:</label>
+                <select id="ingresos" name="ingresos">
+                    <option value="Bajos ingresos">Bajos ingresos</option>
+                    <option value="Altos ingresos">Altos ingresos</option>
+                </select>
+            </div>
+
+            <label for="consumo">Consumo (en unidades):</label>
+            <input type="number" id="consumo" name="consumo" required>
+            <button type="submit">Calcular</button>
+            <button type="reset" id="recalcular">Recalcular</button>
+        </form>
+        <div id="resultado"></div>
+    </div>
+
+    <script>
+        const provinciasCiudades = {
+            'Salta': ['Ciudad A', 'Ciudad B'],
+            'Jujuy': ['Ciudad C']
+        };
+
+        const provinciaSelect = document.getElementById('provincia');
+        const ciudadSelect = document.getElementById('ciudad');
+        const ingresosDiv = document.getElementById('ingresos-div');
+        const recalcularButton = document.getElementById('recalcular');
+        const resultadoDiv = document.getElementById('resultado');
+
+        provinciaSelect.addEventListener('change', function() {
+            const provincia = this.value;
+            ciudadSelect.innerHTML = '<option value="">Seleccione una ciudad</option>';
+
+            if (provinciasCiudades[provincia]) {
+                provinciasCiudades[provincia].forEach(ciudad => {
+                    const option = document.createElement('option');
+                    option.value = ciudad;
+                    option.textContent = ciudad;
+                    ciudadSelect.appendChild(option);
+                });
+
+                // Mostrar/ocultar el campo de ingresos según la ciudad seleccionada
+                ciudadSelect.addEventListener('change', function() {
+                    if (this.value === 'Ciudad A') {
+                        ingresosDiv.style.display = 'block';
+                    } else {
+                        ingresosDiv.style.display = 'none';
+                    }
+                });
+
+                // Disparar el evento de cambio de ciudad al seleccionar una provincia para aplicar la lógica de ingresos
+                ciudadSelect.dispatchEvent(new Event('change'));
+            }
+        });
+
+        document.getElementById('consumo-form').addEventListener('submit', function(event) {
+            event.preventDefault();
+
+            const anio = document.getElementById('anio').value;
+            const provincia = document.getElementById('provincia').value;
+            const ciudad = document.getElementById('ciudad').value;
+            const consumo = document.getElementById('consumo').value;
+            const ingresos = ciudad === 'Ciudad A' ? document.getElementById('ingresos').value : '.';
+
+            fetch('/calcular', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({ anio: anio, provincia: provincia, ciudad: ciudad, consumo: consumo, ingresos: ingresos })
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.error) {
+                    resultadoDiv.innerText = `Error: ${data.error}`;
+                } else {
+                    resultadoDiv.innerHTML = `<strong>${data.message}</strong><br><span class="nota">${data.note} <a href="https://docs.google.com/forms/d/1agmCC6tp-yWY053UFY8BlK4a3HX7kuf2BuSJI5Dh3NI/prefill" target="_blank">Envíenos su factura de servicios</a>.</span>`;
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+            });
+        });
+
+        recalcularButton.addEventListener('click', function() {
+            document.getElementById('consumo-form').reset();
+            resultadoDiv.innerHTML = '';
+        });
+
+        // Inicializar las ciudades para la provincia seleccionada por defecto
+        provinciaSelect.dispatchEvent(new Event('change'));
+    </script>
+</body>
+</html>
